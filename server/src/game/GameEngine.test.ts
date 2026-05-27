@@ -1,0 +1,65 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { TDM_RESPAWN_DELAY_MS } from "@ai-browser-fps/shared";
+import { GameEngine } from "./GameEngine.js";
+
+test("match starts in lobby and runs only after team selection", () => {
+  const game = new GameEngine();
+  const initial = game.getState();
+
+  assert.equal(initial.match.phase, "lobby");
+
+  game.tick(initial.serverTime + 30_000);
+
+  assert.equal(game.getState().match.phase, "lobby");
+  assert.equal(game.getState().match.startedAt, initial.match.startedAt);
+
+  game.selectTeam("TR", initial.serverTime + 30_000);
+
+  assert.equal(game.getState().match.phase, "running");
+  assert.equal(game.getState().match.selectedTeam, "TR");
+});
+
+test("selected team keeps 5v5 composition with player replacing one bot", () => {
+  const game = new GameEngine();
+  game.selectTeam("TR");
+  const state = game.getState();
+  const player = state.players.find((candidate) => candidate.id === "player");
+
+  assert.equal(player?.team, "TR");
+  assert.equal(state.players.filter((candidate) => candidate.team === "TR").length, 5);
+  assert.equal(state.players.filter((candidate) => candidate.team === "CT").length, 5);
+  assert.equal(state.players.filter((candidate) => candidate.team === "TR" && candidate.kind === "bot").length, 4);
+  assert.equal(state.players.filter((candidate) => candidate.team === "CT" && candidate.kind === "bot").length, 5);
+  assert.ok((player?.position.x ?? 0) > 20);
+});
+
+test("deathmatch kills score immediately and victim respawns at a map spawn", () => {
+  const now = Date.now();
+  const game = new GameEngine();
+  game.selectTeam("CT", now);
+  const state = game.getState();
+  const attacker = state.players.find((player) => player.team === "CT" && player.alive)!;
+  const victim = state.players.find((player) => player.team === "TR" && player.alive)!;
+
+  attacker.position = { x: -6, y: 0, z: 0 };
+  victim.position = { x: -6, y: 0, z: 6 };
+  victim.health = 1;
+
+  game.shoot(
+    { x: attacker.position.x, y: 1.7, z: attacker.position.z },
+    { x: 0, y: -0.7, z: 6 },
+    attacker.weapon,
+    now
+  );
+
+  assert.equal(state.match.teams.CT.score, 1);
+  assert.equal(victim.alive, false);
+  assert.equal(victim.respawnAt, now + TDM_RESPAWN_DELAY_MS);
+
+  game.tick(now + TDM_RESPAWN_DELAY_MS + 100);
+
+  assert.equal(victim.alive, true);
+  assert.equal(victim.health, 100);
+  assert.notDeepEqual(victim.position, { x: -6, y: 0, z: 6 });
+});

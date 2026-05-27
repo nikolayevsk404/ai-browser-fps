@@ -1,0 +1,9 @@
+services:
+  game:
+    build: .
+    container_name: ai-browser-fps
+    ports:
+      - "9000:9000"
+    environment:
+      - NODE_ENV=production
+      - PORT=9000
