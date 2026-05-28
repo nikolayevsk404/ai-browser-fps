@@ -45,10 +45,12 @@ export function FpsGame({
   const [tacticalMapOpen, setTacticalMapOpen] = useState(false);
   const [sensitivity, setSensitivity] = useState(0.55);
   const [volume, setVolume] = useState(0.45);
+  const [pendingTeam, setPendingTeam] = useState<{ team: TeamId; requestedAt: number } | null>(null);
   const player = gameState?.players.find((candidate) => candidate.id === "player");
   const matchRemainingMs = getMatchRemainingMs(gameState);
   const respawnMs = getRespawnRemainingMs(gameState, player);
   const uiLocked = screen !== "playing" || scoreboardOpen || tacticalMapOpen;
+  const sceneOverviewMode = screen === "menu" || screen === "team" || (screen === "settings" && returnScreen !== "playing");
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -78,6 +80,20 @@ export function FpsGame({
     [gameState]
   );
 
+  useEffect(() => {
+    if (!pendingTeam || screen !== "team" || !gameState) {
+      return;
+    }
+
+    const teamConfirmed = gameState.match.selectedTeam === pendingTeam.team;
+    const matchStartedAfterSelection = gameState.match.startedAt >= pendingTeam.requestedAt - 1000;
+
+    if (gameState.match.phase === "running" && teamConfirmed && matchStartedAfterSelection) {
+      setPendingTeam(null);
+      setScreen("playing");
+    }
+  }, [gameState, pendingTeam, screen]);
+
   return (
     <main className="game-shell">
       <FpsScene
@@ -85,7 +101,7 @@ export function FpsGame({
         onEquipWeapon={onEquipWeapon}
         onPlayerPosition={onPlayerPosition}
         onShoot={onShoot}
-        overviewMode={screen === "menu"}
+        overviewMode={sceneOverviewMode}
         sensitivity={sensitivity}
         uiLocked={uiLocked}
         volume={volume}
@@ -119,7 +135,10 @@ export function FpsGame({
           serverMessage={serverMessage}
           status={status}
           statusLabel={statusLabel}
-          onPlay={() => setScreen("team")}
+          onPlay={() => {
+            setPendingTeam(null);
+            setScreen("team");
+          }}
           onSettings={() => {
             setReturnScreen("menu");
             setScreen("settings");
@@ -129,10 +148,11 @@ export function FpsGame({
 
       {screen === "team" ? (
         <TeamSelect
+          pendingTeam={pendingTeam?.team ?? null}
           selectedTeam={gameState?.match.selectedTeam ?? "CT"}
           onSelect={(team) => {
+            setPendingTeam({ team, requestedAt: Date.now() });
             onSelectTeam(team);
-            setScreen("playing");
           }}
         />
       ) : null}
@@ -379,16 +399,26 @@ function MainMenu({
   );
 }
 
-function TeamSelect({ onSelect, selectedTeam }: { onSelect: (team: TeamId) => void; selectedTeam: TeamId }) {
+function TeamSelect({
+  onSelect,
+  pendingTeam,
+  selectedTeam
+}: {
+  onSelect: (team: TeamId) => void;
+  pendingTeam: TeamId | null;
+  selectedTeam: TeamId;
+}) {
+  const waiting = pendingTeam !== null;
+
   return (
     <section className="modal-panel team-panel" aria-label="Seleção de time">
       <h2>Select Team</h2>
       <div className="team-options">
-        <button type="button" className={selectedTeam === "CT" ? "active" : ""} onClick={() => onSelect("CT")}>
-          Counter-Terrorists
+        <button type="button" className={selectedTeam === "CT" ? "active" : ""} disabled={waiting} onClick={() => onSelect("CT")}>
+          {pendingTeam === "CT" ? "Entering CT..." : "Counter-Terrorists"}
         </button>
-        <button type="button" className={selectedTeam === "TR" ? "active" : ""} onClick={() => onSelect("TR")}>
-          Terrorists
+        <button type="button" className={selectedTeam === "TR" ? "active" : ""} disabled={waiting} onClick={() => onSelect("TR")}>
+          {pendingTeam === "TR" ? "Entering TR..." : "Terrorists"}
         </button>
       </div>
     </section>

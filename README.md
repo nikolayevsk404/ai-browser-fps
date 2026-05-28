@@ -1,4 +1,6 @@
-# AI Counter-Strike 1.6 Browser Clone
+# AI Browser FPS
+
+![AI Browser FPS gameplay](assets/images/ai-browser-fps.gif)
 
 FPS competitivo inspirado em CS 1.6, rodando no navegador, com visual Low Poly/PS1 e bots controlados por AI Agents adaptativos.
 

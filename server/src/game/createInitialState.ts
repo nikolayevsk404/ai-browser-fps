@@ -74,7 +74,7 @@ function createPlayer(
   spawnIndex: number,
   now: number
 ): PlayerState {
-  const primary = spawnIndex % 4 === 0 ? "sniper" : "rifle";
+  const primary = "rifle";
   const secondary = "pistol";
 
   return {

@@ -371,3 +371,4 @@ function hasLineOfSight(a: PlayerState["position"], b: PlayerState["position"]):
     return false;
   });
 }
+

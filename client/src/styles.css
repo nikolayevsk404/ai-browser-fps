@@ -543,7 +543,8 @@ dd {
   cursor: pointer;
 }
 
-.objective-actions button:disabled {
+.objective-actions button:disabled,
+.team-options button:disabled {
   cursor: not-allowed;
   color: #827a6d;
   background: rgba(255, 255, 255, 0.045);
@@ -551,7 +552,7 @@ dd {
 
 .weapon-list button:hover,
 .menu-actions button:hover,
-.team-options button:hover,
+.team-options button:hover:not(:disabled),
 .objective-actions button:hover:not(:disabled) {
   background: rgba(209, 183, 131, 0.28);
 }
